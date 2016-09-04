@@ -58,10 +58,15 @@ var handleRequest = function(request, response) {
 (function() {
   var homePath = process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'];
   var configPath = path.join(homePath, '.plsqlrunner', 'config.json');
-  config = require(configPath);
-  profile = config.profiles[0];
-  plugins = (profile.plugins || []).map(plugin => require('./pluginTypes/'+plugin.type+'.js')(plugin));
-  defaultPlugin = require('./pluginTypes/proxy.js')({ matchType: 'default', type: 'proxy' });
+  try {
+    config = require(configPath);
+    profile = config.profiles[0];
+    plugins = (profile.plugins || []).map(plugin => require('./pluginTypes/'+plugin.type+'.js')(plugin));
+    defaultPlugin = require('./pluginTypes/proxy.js')({ matchType: 'default', type: 'proxy' });
+  } catch(e) {
+    console.log('WebRunner was unable to start. Configuration file may be missing or incorrect.')
+    return;
+  }
   http.createServer(handleRequest).listen(5150, function() {
     console.log("WebRunner listening on: http://localhost:5150");
   });
