@@ -57,7 +57,7 @@ var handleRequest = function(request, response) {
 
 (function() {
   var homePath = process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'];
-  var configPath = path.join(homePath, '.plsqlrunner', 'config.json');
+  var configPath = path.join(homePath, '.webrunner', 'config.json');
   try {
     config = require(configPath);
     profile = config.profiles[0];
