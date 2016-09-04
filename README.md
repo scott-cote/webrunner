@@ -1,7 +1,7 @@
 # webrunner
 WebRunner is a development tool for web applications that acts as a plugin-ready proxy. It sits between the browser and a web application. Requests can be passed through to the origin server or be served from local files.
 
-# Insall
+# Install
 
 On Mac and Linux: sudo npm install webrunner -g
 
