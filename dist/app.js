@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var fs = require('fs');
 var path = require('path');
 var url = require('url');
@@ -40,7 +42,7 @@ var pluginMatcher = function(request) {
     } else if (plugin.matchType === 'urlPathname') {
       return url.parse(request.url).pathname === plugin.matchValue;
     } else if (plugin.matchType === 'function' && plugin.matchFunction) {
-      return plugin.matchFunction(request); 
+      return plugin.matchFunction(request);
     } else {
       return false;
     }
@@ -61,6 +63,6 @@ var handleRequest = function(request, response) {
   plugins = (profile.plugins || []).map(plugin => require('./pluginTypes/'+plugin.type+'.js')(plugin));
   defaultPlugin = require('./pluginTypes/proxy.js')({ matchType: 'default', type: 'proxy' });
   http.createServer(handleRequest).listen(5150, function() {
-    console.log("PLSQLRunner listening on: http://localhost:5150");
+    console.log("WebRunner listening on: http://localhost:5150");
   });
 })();
