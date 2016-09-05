@@ -5,6 +5,7 @@ var path = require('path');
 var url = require('url');
 var http = require('http');
 var https = require('https');
+var argv = require('minimist')(process.argv.slice(2));
 
 var buildRequestHeaders = function(headers) {
   var newHeaders = {};
@@ -62,7 +63,10 @@ var handleRequest = function(request, response) {
   var configPath = path.join(homePath, '.webrunner', 'config.json');
   try {
     config = require(configPath);
-    profile = config.profiles[0];
+    profile = config.profiles.find(profile => {
+      if (!argv.profile) return true;
+      return profile.name === argv.profile;
+    });
     plugins = (profile.plugins || []).map(plugin => require('./pluginTypes/'+plugin.type+'.js')(plugin));
     defaultPlugin = require('./pluginTypes/proxy.js')({ matchType: 'default', type: 'proxy' });
   } catch(e) {
