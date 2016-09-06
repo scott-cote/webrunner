@@ -1,5 +1,6 @@
 # webrunner
-WebRunner is a development tool for web applications that acts as a plugin-ready proxy. It sits between the browser and a web application. Requests can be passed through to the origin server or be served from local files.
+WebRunner is an extensible proxy server designed to make debugging, testing, and code exploration easier for full stack web developers. As a proxy, it is given HTTP traffic intended for another server and can manipulate the requests and responses as needed. WebRunner’s default behavior is to pass all traffic between the client and origin server with as little change as possible. A user controlled configuration file is used to specify a collection of plugins that are used to manipulate or log the traffic in any way that is helpful for debugging or testing. WebRunner comes with a set of stock Javascript plugins and users can create their own for specific use cases.
+
 
 # Install
 
