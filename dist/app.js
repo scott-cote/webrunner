@@ -78,7 +78,8 @@ var handleRequest = function(request, response) {
     console.log('WebRunner was unable to start. Configuration file may be missing or incorrect.')
     return;
   }
-  http.createServer(handleRequest).listen(5150, function() {
-    console.log("WebRunner listening on: http://localhost:5150");
+  var port = parseInt(argv.port) || 5150;
+  http.createServer(handleRequest).listen(port, function() {
+    console.log("WebRunner listening on: http://localhost:"+port);
   });
 })();
