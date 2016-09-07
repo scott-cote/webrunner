@@ -59,6 +59,11 @@ var handleRequest = function(request, response) {
 };
 
 (function() {
+  if (argv.version) {
+    var package = require('../package.json')
+    console.log(package.version);
+    return;
+  }
   var homePath = process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'];
   var configPath = path.join(homePath, '.webrunner', 'config.json');
   try {
