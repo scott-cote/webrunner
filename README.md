@@ -4,9 +4,9 @@ WebRunner is an extensible proxy server designed to make debugging, testing, and
 
 # Install
 
-On Mac and Linux: sudo npm install webrunner -g
+On Mac and Linux: `sudo npm install webrunner -g`
 
-On Windows: npm install webrunner -g
+On Windows: `npm install webrunner -g`
 
 # Configure
 
