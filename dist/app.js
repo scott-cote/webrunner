@@ -30,8 +30,8 @@ var proxyRequest = function(callback) {
       path: url.parse(this.request.url).path,
       headers: buildRequestHeaders(this.request.headers)
     }, (serverResponse) => {
-      serverResponse.on('end', resolve).on('error', reject);
       callback(this.request, this.response, serverResponse)
+        .then(resolve).catch(reject);
     }).on('error', reject).end();
   });
 };
