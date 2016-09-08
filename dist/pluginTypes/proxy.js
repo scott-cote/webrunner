@@ -1,16 +1,16 @@
 
 module.exports = function(info) {
 
-  var proxyCallback = function(request, response, serverResponse) {
+  var proxyCallback = function() {
     return new Promise((resolve, reject) => {
-      serverResponse.on('end', resolve).on('error', reject);
-      response.statusCode = serverResponse.statusCode;
-      Object.keys(serverResponse.headers).forEach((key) => {
+      this.serverResponse.on('end', resolve).on('error', reject);
+      this.response.statusCode = this.serverResponse.statusCode;
+      Object.keys(this.serverResponse.headers).forEach((key) => {
         if (!['connection'].find(element => key === element)) {
-          response.setHeader(key, serverResponse.headers[key]);
+          this.response.setHeader(key, this.serverResponse.headers[key]);
         }
       });
-      serverResponse.pipe(response);
+      this.serverResponse.pipe(this.response);
     });
   };
 

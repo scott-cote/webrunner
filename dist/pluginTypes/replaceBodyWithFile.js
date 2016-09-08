@@ -2,17 +2,17 @@ var fs = require('fs');
 
 module.exports = function(info) {
 
-  var replaceBodyCallback = function(request, response, serverResponse) {
+  var replaceBodyCallback = function() {
     return new Promise((resolve, reject) => {
-      serverResponse.on('end', resolve).on('error', reject);
-      response.statusCode = serverResponse.statusCode;
-      Object.keys(serverResponse.headers).forEach((key) => {
+      this.serverResponse.on('end', resolve).on('error', reject);
+      this.response.statusCode = this.serverResponse.statusCode;
+      Object.keys(this.serverResponse.headers).forEach((key) => {
         if (!['connection','content-encoding','transfer-encoding'].find(element => key === element)) {
-          response.setHeader(key, serverResponse.headers[key]);
+          this.response.setHeader(key, this.serverResponse.headers[key]);
         }
       });
       var readStream = fs.createReadStream(info.config.filePath);
-      readStream.pipe(response);
+      readStream.pipe(this.response);
     });
   };
 

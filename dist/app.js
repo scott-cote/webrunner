@@ -30,7 +30,7 @@ var proxyRequest = function(callback) {
       path: url.parse(this.request.url).path,
       headers: buildRequestHeaders(this.request.headers)
     }, (serverResponse) => {
-      callback(this.request, this.response, serverResponse)
+      callback.call({ request: this.request, response: this.response, serverResponse: serverResponse })
         .then(resolve).catch(reject);
     }).on('error', reject).end();
   });
@@ -73,7 +73,7 @@ var handleRequest = function(request, response) {
       return profile.name === argv.profile;
     });
     plugins = (profile.plugins || []).map(plugin => require('./pluginTypes/'+plugin.type+'.js')(plugin));
-    defaultPlugin = require('./pluginTypes/proxy.js')({ matchType: 'default', type: 'proxy' });
+    defaultPlugin = require('./pluginTypes/proxy.js')({ matchType: 'default', type: 'proxy', args: argv });
   } catch(e) {
     console.log('WebRunner was unable to start. Configuration file may be missing or incorrect.')
     return;
