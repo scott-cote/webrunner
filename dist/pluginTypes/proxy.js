@@ -1,7 +1,7 @@
 
 module.exports = function(info) {
 
-  var log = !(info.args.verbose) ? () => {} : (msg) => console.log(msg);
+  var log = !(info.options.verbose) ? () => {} : (msg) => console.log(msg);
 
   var proxyCallback = function() {
     return new Promise((resolve, reject) => {

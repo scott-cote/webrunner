@@ -5,7 +5,7 @@ var path = require('path');
 var url = require('url');
 var http = require('http');
 var https = require('https');
-var argv = require('minimist')(process.argv.slice(2));
+var minimist = require('minimist')
 
 var buildRequestHeaders = function(headers) {
   var newHeaders = {};
@@ -58,8 +58,21 @@ var handleRequest = function(request, response) {
     .catch((e) => console.log('Error: '+e));
 };
 
+var parseOptions = function() {
+  options = minimist(process.argv.slice(2), {
+    unknown: () => false,
+    boolean: ['verbose','version'],
+    string: ['port','profile'],
+  });
+  if (options.port && parseInt(options.port) != options.port) {
+    throw "Invalid port command line option";
+  }
+  options.port = parseInt(options.port) || 5150;
+};
+
 (function() {
-  if (argv.version) {
+  parseOptions();
+  if (options.version) {
     var package = require('../package.json')
     console.log(package.version);
     return;
@@ -69,17 +82,16 @@ var handleRequest = function(request, response) {
   try {
     config = require(configPath);
     profile = config.profiles.find(profile => {
-      if (!argv.profile) return true;
-      return profile.name === argv.profile;
+      if (!options.profile) return true;
+      return profile.name === options.profile;
     });
     plugins = (profile.plugins || []).map(plugin => require('./pluginTypes/'+plugin.type+'.js')(plugin));
-    defaultPlugin = require('./pluginTypes/proxy.js')({ matchType: 'default', type: 'proxy', args: argv });
+    defaultPlugin = require('./pluginTypes/proxy.js')({ matchType: 'default', type: 'proxy', options: options });
   } catch(e) {
     console.log('WebRunner was unable to start. Configuration file may be missing or incorrect.')
     return;
   }
-  var port = parseInt(argv.port) || 5150;
-  http.createServer(handleRequest).listen(port, function() {
-    console.log("WebRunner listening on: http://localhost:"+port);
+  http.createServer(handleRequest).listen(options.port, function() {
+    console.log("WebRunner listening on: http://localhost:"+options.port);
   });
 })();
