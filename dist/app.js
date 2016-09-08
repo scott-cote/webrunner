@@ -52,6 +52,9 @@ var pluginMatcher = function(request) {
   };
 }
 
+var fullProxy = function(request, response) {
+};
+
 var handleRequest = function(request, response) {
   var plugin = plugins.find(pluginMatcher(request)) || defaultPlugin;
   plugin.handleRequest.call({ request: request, response: response, proxyRequest: proxyRequest })
@@ -61,7 +64,7 @@ var handleRequest = function(request, response) {
 var parseOptions = function() {
   options = minimist(process.argv.slice(2), {
     unknown: () => false,
-    boolean: ['verbose','version'],
+    boolean: ['verbose','version','x-full-proxy'],
     string: ['port','profile'],
   });
   if (options.port && parseInt(options.port) != options.port) {
@@ -91,7 +94,7 @@ var parseOptions = function() {
     console.log('WebRunner was unable to start. Configuration file may be missing or incorrect.')
     return;
   }
-  http.createServer(handleRequest).listen(options.port, function() {
+  http.createServer(options['x-full-proxy'] ? fullProxy : handleRequest).listen(options.port, function() {
     console.log("WebRunner listening on: http://localhost:"+options.port);
   });
 })();
