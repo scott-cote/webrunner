@@ -5,8 +5,29 @@ module.exports = function(info) {
 
   var proxyCallback = function() {
     return new Promise((resolve, reject) => {
+
+      var serverResponseEnd = function() {
+        log('serverResponseEnd');
+        resolve();
+      };
+
+      var serverResponseError = function(e) {
+        log('serverResponseError '+e);
+        reject(e);
+      };
+
+      var responseEnd = function() {
+        log('responseEnd');
+      };
+
+      var responseError = function(e) {
+        log('responseError '+e);
+        reject(e);
+      };
+
       log('proxyCallback started');
-      this.serverResponse.on('end', resolve).on('error', reject);
+      this.serverResponse.on('end', serverResponseEnd).on('error', serverResponseError);
+      this.response.on('end', responseEnd).on('error', responseError);
       this.response.statusCode = this.serverResponse.statusCode;
       Object.keys(this.serverResponse.headers).forEach((key) => {
         if (!['connection'].find(element => key === element)) {
