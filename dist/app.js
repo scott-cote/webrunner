@@ -53,6 +53,8 @@ var pluginMatcher = function(request) {
 }
 
 var fullProxy = function(request, response) {
+  console.log('fullProxy');
+  console.log(request.headers);
 };
 
 var handleRequest = function(request, response) {
