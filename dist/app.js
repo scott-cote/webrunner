@@ -5,7 +5,8 @@ var path = require('path');
 var url = require('url');
 var http = require('http');
 var https = require('https');
-var minimist = require('minimist')
+var minimist = require('minimist');
+var runFullProxy = require('./fullProxy.js');
 
 var buildRequestHeaders = function(headers) {
   var newHeaders = {};
@@ -96,7 +97,11 @@ var parseOptions = function() {
     console.log('WebRunner was unable to start. Configuration file may be missing or incorrect.')
     return;
   }
-  http.createServer(options['x-full-proxy'] ? fullProxy : handleRequest).listen(options.port, function() {
-    console.log("WebRunner listening on: http://localhost:"+options.port);
-  });
+  if (options['x-full-proxy']) {
+    runFullProxy();
+  } else {
+    http.createServer(handleRequest).listen(options.port, function() {
+      console.log("WebRunner listening on: http://localhost:"+options.port);
+    });
+  }
 })();
