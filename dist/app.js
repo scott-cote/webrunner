@@ -53,11 +53,6 @@ var pluginMatcher = function(request) {
   };
 }
 
-var fullProxy = function(request, response) {
-  console.log('fullProxy');
-  console.log(request.headers);
-};
-
 var handleRequest = function(request, response) {
   var plugin = plugins.find(pluginMatcher(request)) || defaultPlugin;
   plugin.handleRequest.call({ request: request, response: response, proxyRequest: proxyRequest })

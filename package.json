@@ -1,6 +1,6 @@
 {
   "name": "webrunner",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "description": "webrunner",
   "main": "index.js",
   "engines": {
