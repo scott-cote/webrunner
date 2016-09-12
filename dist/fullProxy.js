@@ -9,7 +9,7 @@ var runFullProxy = function() {
     try {
       var originUrl = url.parse(clientRequest.url);
       var options = {
-        hostname: originUrl.host,
+        hostname: originUrl.hostname,
         port: originUrl.port,
         path: originUrl.path,
         method: clientRequest.method,
