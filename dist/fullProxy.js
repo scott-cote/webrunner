@@ -13,7 +13,7 @@ var runFullProxy = function() {
         hostname: originUrl.host,
         port: originUrl.port,
         path: originUrl.path,
-        method: request.method 
+        method: request.method
       };
 
       var serverRequest = http.request(options, function (serverResponse) {
@@ -27,11 +27,7 @@ var runFullProxy = function() {
     }
   };
 
-  var proxy = http.createServer(handleRequest).listen(options.port, function() {
-    console.log("WebRunner listening on: http://localhost:"+options.port);
-  });
-
-  proxy.on('connect', (request, clientSocket, data) => {
+  var handleConnect = function(request, clientSocket, data) {
     try {
       var originUrl = url.parse(`https://${request.url}`);
       var originSocket = net.connect(originUrl.port, originUrl.hostname, () => {
@@ -43,7 +39,12 @@ var runFullProxy = function() {
     } catch(e) {
       console.log(e);
     }
-  });
+  };
+
+  http.createServer(handleRequest).on('connect', handleConnect)
+    .listen(options.port, function() {
+      console.log("WebRunner listening on: http://localhost:"+options.port);
+    });
 };
 
 module.exports = runFullProxy;
