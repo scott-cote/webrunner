@@ -5,31 +5,28 @@ var net = require('net');
 var runFullProxy = function() {
   var options = { port: 5150 };
 
-  var handleRequest = function(request, response) {
+  var handleRequest = function(clientRequest, clientResponse) {
     try {
-      var originUrl = url.parse(request.url);
-
+      var originUrl = url.parse(clientRequest.url);
       var options = {
         hostname: originUrl.host,
         port: originUrl.port,
         path: originUrl.path,
-        method: request.method
+        method: clientRequest.method,
+        headers: clientRequest.headers
       };
-
-      var serverRequest = http.request(options, function (serverResponse) {
-        serverResponse.pipe(response, { end: true });
+      var originRequest = http.request(options, (serverResponse) => {
+        serverResponse.pipe(clientResponse);
       });
-
-      request.pipe(serverRequest, { end: true });
-
+      clientRequest.pipe(originRequest);
     } catch (e) {
       console.log(e);
     }
   };
 
-  var handleConnect = function(request, clientSocket, data) {
+  var handleConnect = function(clientRequest, clientSocket, data) {
     try {
-      var originUrl = url.parse(`https://${request.url}`);
+      var originUrl = url.parse(`https://${clientRequest.url}`);
       var originSocket = net.connect(originUrl.port, originUrl.hostname, () => {
         clientSocket.write('HTTP/1.1 200 Connection Established\r\n'+'Proxy-agent: WebRunner\r\n'+'\r\n');
         originSocket.write(data);
