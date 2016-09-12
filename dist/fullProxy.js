@@ -7,7 +7,21 @@ var runFullProxy = function() {
 
   var handleRequest = function(request, response) {
     try {
-      throw "handleRequest not implemented";
+      var originUrl = url.parse(request.url);
+
+      var options = {
+        hostname: originUrl.host,
+        port: originUrl.port,
+        path: originUrl.path,
+        method: request.method 
+      };
+
+      var serverRequest = http.request(options, function (serverResponse) {
+        serverResponse.pipe(response, { end: true });
+      });
+
+      request.pipe(serverRequest, { end: true });
+
     } catch (e) {
       console.log(e);
     }
