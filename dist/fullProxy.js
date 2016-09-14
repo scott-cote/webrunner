@@ -15,9 +15,13 @@ var runFullProxy = function() {
       return newHeaders;
     };
 
-    var logError = function(source, error, allowedErrno) {
+    var logError = function(source, error, url, allowedErrno) {
         if (!(allowedErrno||[]).find(errno => error.errno === errno)) {
-            console.log(source+': '+error);
+          if (!!url) {
+            console.log(url.hostname+' - '+source+' - '+error);
+          } else {
+            console.log(source+' - '+error);
+          }
         }
     };
 
@@ -32,16 +36,16 @@ var runFullProxy = function() {
        headers: buildRequestHeaders(clientRequest.headers)
      };
      var originRequest = http.request(options, (originResponse) => {
-       originResponse.on('error', e => logError('originResponse', e));
+       originResponse.on('error', e => logError('originResponse', e, originUrl));
        clientResponse.statusCode = originResponse.statusCode;
        Object.keys(originResponse.headers).forEach((key) => {
          clientResponse.setHeader(key, originResponse.headers[key]);
        });
        originResponse.pipe(clientResponse);
      })
-     clientRequest.on('error', e => logError('clientRequest', e));
-     clientResponse.on('error', e => logError('clientResponse', e));
-     originRequest.on('error', e => logError('originRequest', e));
+     clientRequest.on('error', e => logError('clientRequest', e, originUrl));
+     clientResponse.on('error', e => logError('clientResponse', e, originUrl));
+     originRequest.on('error', e => logError('originRequest', e, originUrl));
      clientRequest.pipe(originRequest);
    } catch (e) {
      console.log(e);
@@ -57,9 +61,9 @@ var runFullProxy = function() {
        originSocket.pipe(clientSocket);
        clientSocket.pipe(originSocket);
      });
-     clientRequest.on('error', e => logError('clientRequest (connect)', e));
-     clientSocket.on('error', e => logError('clientSocket', e, ['ECONNRESET']));
-     originSocket.on('error', e => logError('originSocket', e));
+     clientRequest.on('error', e => logError('clientRequest (connect)', e, originUrl));
+     clientSocket.on('error', e => logError('clientSocket', e, originUrl, ['ECONNRESET']));
+     originSocket.on('error', e => logError('originSocket', e, originUrl));
    } catch(e) {
      console.log(e);
    }
