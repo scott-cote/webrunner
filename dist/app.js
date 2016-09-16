@@ -7,6 +7,7 @@ var http = require('http');
 var https = require('https');
 var minimist = require('minimist');
 var runFullProxy = require('./fullProxy.js');
+var runSSLTest = require('./sslTest.js');
 
 var buildRequestHeaders = function(headers) {
   var newHeaders = {};
@@ -62,7 +63,7 @@ var handleRequest = function(request, response) {
 var parseOptions = function() {
   options = minimist(process.argv.slice(2), {
     unknown: () => false,
-    boolean: ['verbose','version','x-full-proxy'],
+    boolean: ['verbose','version','x-full-proxy','x-ssl-test'],
     string: ['port','profile'],
   });
   if (options.port && parseInt(options.port) != options.port) {
@@ -94,6 +95,8 @@ var parseOptions = function() {
   }
   if (options['x-full-proxy']) {
     runFullProxy();
+  } else if (options['x-ssl-test']) {
+    runSSLTest();
   } else {
     http.createServer(handleRequest).listen(options.port, function() {
       console.log("WebRunner listening on: http://localhost:"+options.port);
