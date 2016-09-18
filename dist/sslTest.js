@@ -1,5 +1,6 @@
 var http = require('http');
 var https = require('https');
+var http = require('http');
 var url = require('url');
 var net = require('net');
 var fs = require('fs');
@@ -99,9 +100,12 @@ var sslTest = function() {
     require('ssl-root-cas').addFile('cert.pem');
     */
 
-  var secureOptions = {};
+  var secureOptions = {
+    key: fs.readFileSync('key.pem'),
+    cert: fs.readFileSync('cert.pem'),
+  };
 
-  https.createServer(secureOptions, function (req, res) {
+  http.createServer(function (req, res) {
     res.end("hello world\n");
   }).listen(8000, () => console.log('SSL test listening on port 8000'));
 };
