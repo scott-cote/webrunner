@@ -5,6 +5,8 @@ var url = require('url');
 var net = require('net');
 var fs = require('fs');
 
+// https://nodejs.org/api/tls.html
+
 /*
 
 To generate a self-signed certificate, run the following in your shell:
@@ -103,11 +105,15 @@ var sslTest = function() {
   var secureOptions = {
     key: fs.readFileSync('key.pem'),
     cert: fs.readFileSync('cert.pem'),
+    ciphers: require('tls').DEFAULT_CIPHERS,
   };
 
-  http.createServer(function (req, res) {
+  var server = https.createServer(secureOptions, function (req, res) {
+    console.log('req')
     res.end("hello world\n");
-  }).listen(8000, () => console.log('SSL test listening on port 8000'));
+  })
+  server.on('error', e => console.log(e));
+  server.listen(8000, () => console.log('SSL test listening on port 8000'));
 };
 
 module.exports = sslTest;
