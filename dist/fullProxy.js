@@ -87,13 +87,14 @@ var runFullProxy = function() {
       console.log("WebRunner listening on: http://localhost:"+options.port);
     }).on('error', e => logError('httpServer', e));
 
+    /*
     var secureOptions = {
       key: fs.readFileSync('key.pem'),
       cert: fs.readFileSync('cert.pem'),
       requestCert: true,
       rejectUnauthorized: false
     };
-
+    */
     /*
     require('ssl-root-cas').addFile('cert.pem');
 
