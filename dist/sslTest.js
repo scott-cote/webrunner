@@ -4,6 +4,7 @@ var http = require('http');
 var url = require('url');
 var net = require('net');
 var fs = require('fs');
+var path = require('path');
 
 // https://nodejs.org/api/tls.html
 
@@ -102,10 +103,11 @@ var sslTest = function() {
     require('ssl-root-cas').addFile('cert.pem');
     */
 
+  var npmPath = __dirname.split(path.sep).slice(0, -1).join(path.sep);
+
   var secureOptions = {
-    key: fs.readFileSync('key.pem'),
-    cert: fs.readFileSync('cert.pem'),
-    ciphers: require('tls').DEFAULT_CIPHERS,
+    key: fs.readFileSync([npmPath, 'key.pem'].join(path.sep)),
+    cert: fs.readFileSync([npmPath, 'cert.pem'].join(path.sep)),
   };
 
   var server = https.createServer(secureOptions, function (req, res) {
