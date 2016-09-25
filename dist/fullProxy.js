@@ -16,6 +16,16 @@ rm csr.pem
 
 */
 
+/*
+
+openssl genrsa -out rootCA.key 2048
+openssl req -x509 -new -nodes -key rootCA.key -sha256 -days 1024 -out rootCA.pem
+openssl genrsa -out device.key 2048
+openssl req -new -key device.key -out device.csr
+openssl x509 -req -in device.csr -CA rootCA.pem -CAkey rootCA.key -CAcreateserial -out device.crt -days 500 -sha256
+
+*/
+
 var runFullProxy = function() {
   var options = { port: 5150 };
 
@@ -39,11 +49,11 @@ var runFullProxy = function() {
     }
   };
 
-  var handleRequest = function(clientRequest, clientResponse) {
+  var handleRequest = function(clientRequest, clientResponse, host) {
     try {
       var originUrl = url.parse(clientRequest.url);
       var options = {
-        hostname: originUrl.hostname,
+        hostname: host || originUrl.hostname,
         port: originUrl.port,
         path: originUrl.path,
         method: clientRequest.method,
@@ -69,12 +79,16 @@ var runFullProxy = function() {
   var handleConnect = function(clientRequest, clientSocket, data) {
     try {
       var originUrl = url.parse(`https://${clientRequest.url}`);
+      if (originUrl.hostname === 'www.scottcote.com') {
+        originUrl = url.parse('https://localhost:8000');
+      }
       var originSocket = net.connect(originUrl.port, originUrl.hostname, () => {
         clientSocket.write('HTTP/1.1 200 Connection Established\r\n'+'Proxy-agent: WebRunner\r\n'+'\r\n');
         originSocket.write(data);
         originSocket.pipe(clientSocket);
         clientSocket.pipe(originSocket);
       });
+      originSocket.on('connect', e=> console.log(originSocket));
       clientRequest.on('error', e => logError('clientRequest (connect)', e, originUrl));
       clientSocket.on('error', e => logError('clientSocket', e, originUrl, ['ECONNRESET']));
       originSocket.on('error', e => logError('originSocket', e, originUrl));
@@ -96,7 +110,7 @@ var runFullProxy = function() {
   };
 
   https.createServer(secureOptions, function (req, res) {
-    res.end("hello world\n");
+    handleRequest(req, res, "www.scottcote.com");
   }).listen(8000, () => console.log('SSL test listening on port 8000'));
 };
 
