@@ -79,7 +79,15 @@ var parseOptions = function() {
     return;
   }
   var homePath = process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'];
-  var configPath = path.join(homePath, '.webrunner', 'config.json');
+  var configBasePath = path.join(homePath, '.webrunner');
+  var configPath = path.join(configBasePath, 'config.json');
+  if (!fs.existsSync(configPath)) {
+    if (!fs.existsSync(configBasePath)) {
+      fs.mkdirSync(configBasePath);
+    }
+    var defaultConfig = '{ "profiles": [ { "name": "yahoo", "host": "www.yahoo.com", "secureHost": true } ] }';
+    fs.writeFileSync(configPath, defaultConfig);
+  }
   try {
     config = require(configPath);
     profile = config.profiles.find(profile => {
@@ -89,7 +97,7 @@ var parseOptions = function() {
     plugins = (profile.plugins || []).map(plugin => require('./pluginTypes/'+plugin.type+'.js')(plugin));
     defaultPlugin = require('./pluginTypes/proxy.js')({ matchType: 'default', type: 'proxy', options: options });
   } catch(e) {
-    console.log('WebRunner was unable to start. Configuration file may be missing or incorrect.')
+    console.log('WebRunner was unable to start. Configuration file may be incorrect.')
     return;
   }
   if (options['x-full-proxy']) {
