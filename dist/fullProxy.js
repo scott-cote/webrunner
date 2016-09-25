@@ -3,12 +3,13 @@ var https = require('https');
 var url = require('url');
 var net = require('net');
 var fs = require('fs');
+var path = require('path');
 
 /*
 
 To generate a self-signed certificate, run the following in your shell:
 
-openssl genrsa -out key.pem
+openssl genrsa -out key.pem 2048
 openssl req -new -key key.pem -out csr.pem
 openssl x509 -req -days 9999 -in csr.pem -signkey key.pem -out cert.pem
 rm csr.pem
@@ -87,21 +88,16 @@ var runFullProxy = function() {
       console.log("WebRunner listening on: http://localhost:"+options.port);
     }).on('error', e => logError('httpServer', e));
 
-    /*
-    var secureOptions = {
-      key: fs.readFileSync('key.pem'),
-      cert: fs.readFileSync('cert.pem'),
-      requestCert: true,
-      rejectUnauthorized: false
-    };
-    */
-    /*
-    require('ssl-root-cas').addFile('cert.pem');
+  var npmPath = __dirname.split(path.sep).slice(0, -1).join(path.sep);
 
-    https.createServer(secureOptions, function (req, res) {
-      res.end("hello world\n");
-    }).listen(8000, () => console.log('READY'));
-    */
+  var secureOptions = {
+    key: fs.readFileSync([npmPath, 'key.pem'].join(path.sep)),
+    cert: fs.readFileSync([npmPath, 'cert.pem'].join(path.sep)),
+  };
+
+  https.createServer(secureOptions, function (req, res) {
+    res.end("hello world\n");
+  }).listen(8000, () => console.log('SSL test listening on port 8000'));
 };
 
 module.exports = runFullProxy;
