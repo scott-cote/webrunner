@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/scott-cote/webrunner#readme",
   "dependencies": {
-    "minimist": "^1.2.0"
+    "minimist": "^1.2.0",
+    "node-forge": "^0.6.42"
   }
 }

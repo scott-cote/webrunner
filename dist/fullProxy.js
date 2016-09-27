@@ -4,6 +4,7 @@ var url = require('url');
 var net = require('net');
 var fs = require('fs');
 var path = require('path');
+var forge = require('node-forge');
 
 /*
 
@@ -102,15 +103,61 @@ var runFullProxy = function() {
       console.log("WebRunner listening on: http://localhost:"+options.port);
     }).on('error', e => logError('httpServer', e));
 
-  var npmPath = __dirname.split(path.sep).slice(0, -1).join(path.sep);
+  var pki = forge.pki;
+
+  // generate a keypair or use one you have already
+  var keys = pki.rsa.generateKeyPair(2048);
+
+  // create a new certificate
+  var cert = pki.createCertificate();
+
+  // fill the required fields
+  cert.publicKey = keys.publicKey;
+  cert.serialNumber = '01';
+  cert.validity.notBefore = new Date();
+  cert.validity.notAfter = new Date();
+  cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 1);
+
+  // use your own attributes here, or supply a csr (check the docs)
+  var attrs = [{
+    name: 'commonName',
+    value: 'example.org'
+  }, {
+    name: 'countryName',
+    value: 'US'
+  }, {
+    shortName: 'ST',
+    value: 'Virginia'
+  }, {
+    name: 'localityName',
+    value: 'Blacksburg'
+  }, {
+    name: 'organizationName',
+    value: 'Test'
+  }, {
+    shortName: 'OU',
+    value: 'Test'
+  }];
+
+  // here we set subject and issuer as the same one
+  cert.setSubject(attrs);
+  cert.setIssuer(attrs);
+
+  // the actual certificate signing
+  cert.sign(keys.privateKey);
+
+  // now convert the Forge certificate to PEM format
+
+  //var npmPath = __dirname.split(path.sep).slice(0, -1).join(path.sep);
 
   var secureOptions = {
-    key: fs.readFileSync([npmPath, 'key.pem'].join(path.sep)),
-    cert: fs.readFileSync([npmPath, 'cert.pem'].join(path.sep)),
+    key: pki.privateKeyToPem(keys.privateKey),
+    cert: pki.certificateToPem(cert)
   };
 
   https.createServer(secureOptions, function (req, res) {
-    handleRequest(req, res, "www.scottcote.com");
+    res.end('it works');
+    //handleRequest(req, res, "www.yahoo.com");
   }).listen(8000, () => console.log('SSL test listening on port 8000'));
 };
 
