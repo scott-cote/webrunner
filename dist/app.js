@@ -101,7 +101,7 @@ var parseOptions = function() {
     return;
   }
   if (options['x-full-proxy']) {
-    runFullProxy();
+    runFullProxy(Object.assign({ configBasePath: configBasePath }, options));
   } else {
     http.createServer(handleRequest).listen(options.port, function() {
       console.log("WebRunner listening on: http://localhost:"+options.port);

@@ -27,8 +27,7 @@ openssl x509 -req -in device.csr -CA rootCA.pem -CAkey rootCA.key -CAcreateseria
 
 */
 
-var runFullProxy = function() {
-  var options = { port: 5150 };
+var runFullProxy = function(options) {
 
   var buildRequestHeaders = function(headers) {
     var newHeaders = {};
@@ -98,64 +97,53 @@ var runFullProxy = function() {
     }
   };
 
+  var loadSecureOptions = function() {
+    var keyPath = path.join(options.configBasePath, 'key.pem');
+    var certPath = path.join(options.configBasePath, 'cert.pem');
+    if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
+      console.log('Generating cert');
+      var pki = forge.pki;
+      var keys = pki.rsa.generateKeyPair(2048);
+      var cert = pki.createCertificate();
+      cert.publicKey = keys.publicKey;
+      cert.serialNumber = '01';
+      cert.validity.notBefore = new Date();
+      cert.validity.notAfter = new Date();
+      cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 1);
+      var attrs = [{
+        name: 'commonName',
+        value: 'example.org'
+      }, {
+        name: 'countryName',
+        value: 'US'
+      }, {
+        shortName: 'ST',
+        value: 'Virginia'
+      }, {
+        name: 'localityName',
+        value: 'Blacksburg'
+      }, {
+        name: 'organizationName',
+        value: 'Test'
+      }, {
+        shortName: 'OU',
+        value: 'Test'
+      }];
+      cert.setSubject(attrs);
+      cert.setIssuer(attrs);
+      cert.sign(keys.privateKey);
+      fs.writeFileSync(keyPath, pki.privateKeyToPem(keys.privateKey));
+      fs.writeFileSync(certPath,  pki.certificateToPem(cert));
+    }
+    return { key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) };
+  };
+
   http.createServer(handleRequest).on('connect', handleConnect)
     .listen(options.port, function() {
       console.log("WebRunner listening on: http://localhost:"+options.port);
     }).on('error', e => logError('httpServer', e));
 
-  var pki = forge.pki;
-
-  // generate a keypair or use one you have already
-  var keys = pki.rsa.generateKeyPair(2048);
-
-  // create a new certificate
-  var cert = pki.createCertificate();
-
-  // fill the required fields
-  cert.publicKey = keys.publicKey;
-  cert.serialNumber = '01';
-  cert.validity.notBefore = new Date();
-  cert.validity.notAfter = new Date();
-  cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 1);
-
-  // use your own attributes here, or supply a csr (check the docs)
-  var attrs = [{
-    name: 'commonName',
-    value: 'example.org'
-  }, {
-    name: 'countryName',
-    value: 'US'
-  }, {
-    shortName: 'ST',
-    value: 'Virginia'
-  }, {
-    name: 'localityName',
-    value: 'Blacksburg'
-  }, {
-    name: 'organizationName',
-    value: 'Test'
-  }, {
-    shortName: 'OU',
-    value: 'Test'
-  }];
-
-  // here we set subject and issuer as the same one
-  cert.setSubject(attrs);
-  cert.setIssuer(attrs);
-
-  // the actual certificate signing
-  cert.sign(keys.privateKey);
-
-  // now convert the Forge certificate to PEM format
-
-  //var npmPath = __dirname.split(path.sep).slice(0, -1).join(path.sep);
-
-  var secureOptions = {
-    key: pki.privateKeyToPem(keys.privateKey),
-    cert: pki.certificateToPem(cert)
-  };
-
-  https.createServer(secureOptions, function (req, res) {
+  https.createServer(loadSecureOptions(), function (req, res) {
     res.end('it works');
     //handleRequest(req, res, "www.yahoo.com");
   }).listen(8000, () => console.log('SSL test listening on port 8000'));
