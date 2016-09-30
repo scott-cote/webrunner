@@ -97,45 +97,59 @@ var runFullProxy = function(options) {
     }
   };
 
+  var buildCert = function(cert, publicKey, signKey, name) {
+    cert.publicKey = publicKey;
+    cert.serialNumber = '01';
+    cert.validity.notBefore = new Date();
+    cert.validity.notAfter = new Date();
+    cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 1);
+    var attrs = [{
+      name: 'commonName',
+      value: name
+    }, {
+      name: 'countryName',
+      value: 'US'
+    }, {
+      shortName: 'ST',
+      value: 'State'
+    }, {
+      name: 'localityName',
+      value: 'City'
+    }, {
+      name: 'organizationName',
+      value: 'org'
+    }, {
+      shortName: 'OU',
+      value: 'org'
+    }];
+    cert.setSubject(attrs);
+    cert.setIssuer(attrs);
+    cert.sign(signKey);
+  };
+
   var loadSecureOptions = function() {
-    var keyPath = path.join(options.configBasePath, 'key.pem');
-    var certPath = path.join(options.configBasePath, 'cert.pem');
-    if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
-      console.log('Generating cert');
+    var caKeyPath = path.join(options.configBasePath, 'cakey.pem');
+    var caCertPath = path.join(options.configBasePath, 'cacert.pem');
+    var serverKeyPath = path.join(options.configBasePath, 'localhost-key.pem');
+    var serverCertPath = path.join(options.configBasePath, 'localhost-cert.pem');
+    if (!fs.existsSync(serverKeyPath) || !fs.existsSync(serverCertPath) ||
+        !fs.existsSync(caKeyPath) || !fs.existsSync(caCertPath)) {
+      console.log('Generating certs');
       var pki = forge.pki;
-      var keys = pki.rsa.generateKeyPair(2048);
-      var cert = pki.createCertificate();
-      cert.publicKey = keys.publicKey;
-      cert.serialNumber = '01';
-      cert.validity.notBefore = new Date();
-      cert.validity.notAfter = new Date();
-      cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 1);
-      var attrs = [{
-        name: 'commonName',
-        value: 'example.org'
-      }, {
-        name: 'countryName',
-        value: 'US'
-      }, {
-        shortName: 'ST',
-        value: 'Virginia'
-      }, {
-        name: 'localityName',
-        value: 'Blacksburg'
-      }, {
-        name: 'organizationName',
-        value: 'Test'
-      }, {
-        shortName: 'OU',
-        value: 'Test'
-      }];
-      cert.setSubject(attrs);
-      cert.setIssuer(attrs);
-      cert.sign(keys.privateKey);
-      fs.writeFileSync(keyPath, pki.privateKeyToPem(keys.privateKey));
-      fs.writeFileSync(certPath,  pki.certificateToPem(cert));
+      var caKeys = pki.rsa.generateKeyPair(2048);
+      var serverKeys = pki.rsa.generateKeyPair(2048);
+      var caCert = pki.createCertificate();
+      var serverCert = pki.createCertificate();
+
+      buildCert(caCert, caKeys.publicKey, caKeys.privateKey, 'webrunner');
+      buildCert(serverCert, serverKeys.publicKey, caKeys.privateKey, 'localhost');
+
+      fs.writeFileSync(caKeyPath, pki.privateKeyToPem(caKeys.privateKey));
+      fs.writeFileSync(caCertPath,  pki.certificateToPem(caCert));
+      fs.writeFileSync(serverKeyPath, pki.privateKeyToPem(serverKeys.privateKey));
+      fs.writeFileSync(serverCertPath,  pki.certificateToPem(serverCert));
     }
-    return { key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) };
+    return { key: fs.readFileSync(serverKeyPath), cert: fs.readFileSync(serverCertPath) };
   };
 
   http.createServer(handleRequest).on('connect', handleConnect)
