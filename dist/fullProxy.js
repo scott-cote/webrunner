@@ -97,7 +97,7 @@ var runFullProxy = function(options) {
     }
   };
 
-  var buildCert = function(cert, publicKey, signKey, name) {
+  var buildCert = function(cert, caCert, publicKey, signKey, name) {
     cert.publicKey = publicKey;
     cert.serialNumber = '01';
     cert.validity.notBefore = new Date();
@@ -123,8 +123,8 @@ var runFullProxy = function(options) {
       value: 'org'
     }];
     cert.setSubject(attrs);
-    cert.setIssuer(attrs);
-    cert.sign(signKey);
+    cert.setIssuer(caCert ? caCert.subject.attributes : attrs);
+    cert.sign(signKey, forge.md.sha256.create());
   };
 
   var loadSecureOptions = function() {
@@ -141,8 +141,8 @@ var runFullProxy = function(options) {
       var caCert = pki.createCertificate();
       var serverCert = pki.createCertificate();
 
-      buildCert(caCert, caKeys.publicKey, caKeys.privateKey, 'webrunner');
-      buildCert(serverCert, serverKeys.publicKey, caKeys.privateKey, 'localhost');
+      buildCert(caCert, null, caKeys.publicKey, caKeys.privateKey, 'webrunner');
+      buildCert(serverCert, caCert, serverKeys.publicKey, caKeys.privateKey, 'localhost');
 
       fs.writeFileSync(caKeyPath, pki.privateKeyToPem(caKeys.privateKey));
       fs.writeFileSync(caCertPath,  pki.certificateToPem(caCert));
