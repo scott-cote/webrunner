@@ -5,6 +5,7 @@ var net = require('net');
 var fs = require('fs');
 var path = require('path');
 var forge = require('node-forge');
+var tls = require('tls');
 
 /*
 
@@ -76,9 +77,127 @@ var runFullProxy = function(options) {
     }
   };
 
+  /*
+  //function Server([options], listener ) {
+    var options, listener;
+
+    if (arguments[0] !== null && typeof arguments[0] === 'object') {
+      options = arguments[0];
+      listener = arguments[1];
+    } else if (typeof arguments[0] === 'function') {
+      options = {};
+      listener = arguments[0];
+    }
+
+    if (!(this instanceof Server)) return new Server(options, listener);
+
+    this._contexts = [];
+
+    var self = this;
+
+    // Handle option defaults:
+    this.setOptions(options);
+
+    var sharedCreds = tls.createSecureContext({
+      pfx: self.pfx,
+      key: self.key,
+      passphrase: self.passphrase,
+      cert: self.cert,
+      ca: self.ca,
+      ciphers: self.ciphers,
+      ecdhCurve: self.ecdhCurve,
+      dhparam: self.dhparam,
+      secureProtocol: self.secureProtocol,
+      secureOptions: self.secureOptions,
+      honorCipherOrder: self.honorCipherOrder,
+      crl: self.crl,
+      sessionIdContext: self.sessionIdContext
+    });
+    this._sharedCreds = sharedCreds;
+
+    var timeout = options.handshakeTimeout || (120 * 1000);
+
+    if (typeof timeout !== 'number') {
+      throw new TypeError('handshakeTimeout must be a number');
+    }
+
+    if (self.sessionTimeout) {
+      sharedCreds.context.setSessionTimeout(self.sessionTimeout);
+    }
+
+    if (self.ticketKeys) {
+      sharedCreds.context.setTicketKeys(self.ticketKeys);
+    }
+
+    // constructor call
+    net.Server.call(this, function(raw_socket) {
+      var socket = new TLSSocket(raw_socket, {
+        secureContext: sharedCreds,
+        isServer: true,
+        server: self,
+        requestCert: self.requestCert,
+        rejectUnauthorized: self.rejectUnauthorized,
+        handshakeTimeout: timeout,
+        NPNProtocols: self.NPNProtocols,
+        SNICallback: options.SNICallback || SNICallback
+      });
+
+      socket.on('secure', function() {
+        if (socket._requestCert) {
+          var verifyError = socket._handle.verifyError();
+          if (verifyError) {
+            socket.authorizationError = verifyError.code;
+
+            if (socket._rejectUnauthorized)
+              socket.destroy();
+          } else {
+            socket.authorized = true;
+          }
+        }
+
+        if (!socket.destroyed && socket._releaseControl())
+          self.emit('secureConnection', socket);
+      });
+
+      var errorEmitted = false;
+      socket.on('close', function(err) {
+        // Closed because of error - no need to emit it twice
+        if (err)
+          return;
+
+        // Emit ECONNRESET
+        if (!socket._controlReleased && !errorEmitted) {
+          errorEmitted = true;
+          var connReset = new Error('socket hang up');
+          connReset.code = 'ECONNRESET';
+          self.emit('clientError', connReset, socket);
+        }
+      });
+
+      socket.on('_tlsError', function(err) {
+        if (!socket._controlReleased && !errorEmitted) {
+          errorEmitted = true;
+          self.emit('clientError', err, socket);
+        }
+      });
+    });
+
+    if (listener) {
+      this.on('secureConnection', listener);
+    }
+  }
+  */
+
   var handleConnect = function(clientRequest, clientSocket, data) {
     try {
       var originUrl = url.parse(`https://${clientRequest.url}`);
+      /*
+      clientSocket.push(data);
+      var options = {
+
+      };
+      var clientTlsSocket = new tls.TLSSocket(clientSocket, options);
+      */
       if (originUrl.hostname === 'www.scottcote.com') {
         originUrl = url.parse('https://localhost:8000');
       }
@@ -88,7 +207,7 @@ var runFullProxy = function(options) {
         originSocket.pipe(clientSocket);
         clientSocket.pipe(originSocket);
       });
-      originSocket.on('connect', e=> console.log(originSocket));
+      originSocket.on('connect', e => console.log(originSocket));
       clientRequest.on('error', e => logError('clientRequest (connect)', e, originUrl));
       clientSocket.on('error', e => logError('clientSocket', e, originUrl, ['ECONNRESET']));
       originSocket.on('error', e => logError('originSocket', e, originUrl));
