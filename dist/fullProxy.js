@@ -51,6 +51,7 @@ var runFullProxy = function(options) {
   };
 
   var handleRequest = function(clientRequest, clientResponse, host) {
+    console.log('running handleRequest');
     try {
       var originUrl = url.parse(clientRequest.url);
       var options = {
@@ -219,12 +220,12 @@ var runFullProxy = function(options) {
   };
 
   var loadSecureOptions = function() {
-  var caKeyPath = path.join(options.configBasePath, 'cakey.pem');
-  var caCertPath = path.join(options.configBasePath, 'cacert.pem');
-  var serverKeyPath = path.join(options.configBasePath, 'localhost-key.pem');
-  var serverCertPath = path.join(options.configBasePath, 'localhost-cert.pem');
-  if (!fs.existsSync(serverKeyPath) || !fs.existsSync(serverCertPath) ||
-      !fs.existsSync(caKeyPath) || !fs.existsSync(caCertPath)) {
+    var caKeyPath = path.join(options.configBasePath, 'cakey.pem');
+    var caCertPath = path.join(options.configBasePath, 'cacert.pem');
+    var serverKeyPath = path.join(options.configBasePath, 'localhost-key.pem');
+    var serverCertPath = path.join(options.configBasePath, 'localhost-cert.pem');
+    if (!fs.existsSync(serverKeyPath) || !fs.existsSync(serverCertPath) ||
+        !fs.existsSync(caKeyPath) || !fs.existsSync(caCertPath)) {
     console.log('Generating certs');
     var pki = forge.pki;
     var caKeys = pki.rsa.generateKeyPair(2048);
@@ -244,6 +245,7 @@ var runFullProxy = function(options) {
 };
 
   var createSecureContextFor = function(hostname) {
+    console.log('createSecureContextFor '+hostname);
     var secureContextOptions = {
       key: '',
       cert: ''
@@ -252,11 +254,14 @@ var runFullProxy = function(options) {
   };
 
   var handleConnect = function(clientRequest, clientSocket, data) {
+    console.log('running handleConnect');
+    console.log(clientRequest.headers);
     try {
       var originUrl = url.parse(`https://${clientRequest.url}`);
       var options = {
-        secureContext: createSecureContextFor(clientRequest.hostname),
+        secureContext: createSecureContextFor(clientRequest.headers.host.split(':')[0]),
         isServer: true,
+
         //server: self,
         //requestCert: self.requestCert,
         //rejectUnauthorized: self.rejectUnauthorized,
@@ -264,24 +269,21 @@ var runFullProxy = function(options) {
         //NPNProtocols: self.NPNProtocols,
         //SNICallback: options.SNICallback || SNICallback
       };
+      /*
       clientSocket.push(data);
       var clientTlsSocket = new tls.TLSSocket(clientSocket, options);
       clientTlsSocket.on('secure', () => console.log('secure'));
-      /*
-      if (originUrl.hostname === 'www.scottcote.com') {
-        originUrl = url.parse('https://localhost:8000');
-      }
+      */
       var originSocket = net.connect(originUrl.port, originUrl.hostname, () => {
         clientSocket.write('HTTP/1.1 200 Connection Established\r\n'+'Proxy-agent: WebRunner\r\n'+'\r\n');
         originSocket.write(data);
         originSocket.pipe(clientSocket);
         clientSocket.pipe(originSocket);
       });
-      originSocket.on('connect', e => console.log(originSocket));
+      //originSocket.on('connect', e => console.log(originSocket));
       clientRequest.on('error', e => logError('clientRequest (connect)', e, originUrl));
       clientSocket.on('error', e => logError('clientSocket', e, originUrl, ['ECONNRESET']));
       originSocket.on('error', e => logError('originSocket', e, originUrl));
-      */
     } catch(e) {
       console.log(e);
     }
@@ -295,7 +297,7 @@ var runFullProxy = function(options) {
 
   http.createServer(handleRequest).on('connect', handleConnect)
     .listen(options.port, function() {
-      console.log("WebRunner listening on: http://localhost:"+options.port);
+      console.log("WebRunner (full proxy) listening on: http://localhost:"+options.port);
     }).on('error', e => logError('httpServer', e));
 };
 
