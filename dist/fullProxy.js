@@ -342,6 +342,12 @@ var runFullProxy = function(options) {
     console.log('Loading CA');
     caKey  = fs.readFileSync(caKeyPath);
     caCert = fs.readFileSync(caCertPath);
+    /*
+    // convert a Forge public key to PEM-format
+    var pem = pki.publicKeyToPem(publicKey);
+    // convert a PEM-formatted public key to a Forge public key
+    var publicKey = pki.publicKeyFromPem(pem);
+    */
   };
 
   initCa();
