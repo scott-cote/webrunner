@@ -30,6 +30,9 @@ openssl x509 -req -in device.csr -CA rootCA.pem -CAkey rootCA.key -CAcreateseria
 
 var runFullProxy = function(options) {
 
+  var caKey;
+  var caCert;
+
   var buildRequestHeaders = function(headers) {
     var newHeaders = {};
     Object.keys(headers).forEach((key) => {
@@ -51,7 +54,7 @@ var runFullProxy = function(options) {
   };
 
   var handleRequest = function(clientRequest, clientResponse, host) {
-    console.log('running handleRequest');
+    //console.log('running handleRequest');
     try {
       var originUrl = url.parse(clientRequest.url);
       var options = {
@@ -219,6 +222,7 @@ var runFullProxy = function(options) {
     cert.sign(signKey, forge.md.sha256.create());
   };
 
+  /*
   var loadSecureOptions = function() {
     var caKeyPath = path.join(options.configBasePath, 'cakey.pem');
     var caCertPath = path.join(options.configBasePath, 'cacert.pem');
@@ -243,54 +247,101 @@ var runFullProxy = function(options) {
   }
   return { key: fs.readFileSync(serverKeyPath), cert: fs.readFileSync(serverCertPath) };
 };
+  */
 
   var createSecureContextFor = function(hostname) {
     console.log('createSecureContextFor '+hostname);
+    var hostFilename = hostname.replace('.', '-');
+    var serverKeyPath = path.join(options.configBasePath, hostFilename+'-key.pem');
+    var serverCertPath = path.join(options.configBasePath, hostFilename+'-cert.pem');
+    if (!fs.existsSync(serverKeyPath) || !fs.existsSync(serverCertPath)) {
+      console.log('Generating cert for '+hostname);
+      var pki = forge.pki;
+      var serverKeys = pki.rsa.generateKeyPair(2048);
+      var serverCert = pki.createCertificate();
+      buildCert(serverCert, caCert, serverKeys.publicKey, caKeys.privateKey, '*.'+hostname);
+      fs.writeFileSync(serverKeyPath, pki.privateKeyToPem(serverKeys.privateKey));
+      fs.writeFileSync(serverCertPath,  pki.certificateToPem(serverCert));
+    }
+    console.log('Loading cert for '+hostname);
     var secureContextOptions = {
-      key: '',
-      cert: ''
+      key: fs.readFileSync(serverKeyPath),
+      cert: fs.readFileSync(serverCertPath)
     };
     return tls.createSecureContext(secureContextOptions)
   };
 
+  var normalizeHostname  = function(hostname) {
+    return hostname.split('.').slice(-2).join('.');
+  };
+
+  var isDebugOrigin = function(hostname) {
+    return normalizeHostname(hostname) === 'yahoo.com';
+  };
+
+  var inspectSecureTraffic = function(originUrl, clientRequest, clientSocket, data) {
+    var hostname = normalizeHostname(originUrl.hostname);
+    var options = {
+      secureContext: createSecureContextFor(hostname),
+      isServer: true,
+
+      //server: self,
+      //requestCert: self.requestCert,
+      //rejectUnauthorized: self.rejectUnauthorized,
+      //handshakeTimeout: timeout,
+      //NPNProtocols: self.NPNProtocols,
+      //SNICallback: options.SNICallback || SNICallback
+    };
+    /*
+    clientSocket.push(data);
+    var clientTlsSocket = new tls.TLSSocket(clientSocket, options);
+    clientTlsSocket.on('secure', () => console.log('secure'));
+    */
+    bypassDebugger(originUrl, clientRequest, clientSocket, data);
+  };
+
+  var bypassDebugger = function(originUrl, clientRequest, clientSocket, data) {
+    var originSocket = net.connect(originUrl.port, originUrl.hostname, () => {
+      clientSocket.write('HTTP/1.1 200 Connection Established\r\n'+'Proxy-agent: WebRunner\r\n'+'\r\n');
+      originSocket.write(data);
+      originSocket.pipe(clientSocket);
+      clientSocket.pipe(originSocket);
+    });
+    //originSocket.on('connect', e => console.log(originSocket));
+    clientRequest.on('error', e => logError('clientRequest (connect)', e, originUrl));
+    clientSocket.on('error', e => logError('clientSocket', e, originUrl, ['ECONNRESET']));
+    originSocket.on('error', e => logError('originSocket', e, originUrl));
+  };
+
   var handleConnect = function(clientRequest, clientSocket, data) {
-    console.log('running handleConnect');
-    console.log(clientRequest.headers);
+    //console.log('running handleConnect');
     try {
       var originUrl = url.parse(`https://${clientRequest.url}`);
-      var options = {
-        secureContext: createSecureContextFor(clientRequest.headers.host.split(':')[0]),
-        isServer: true,
-
-        //server: self,
-        //requestCert: self.requestCert,
-        //rejectUnauthorized: self.rejectUnauthorized,
-        //handshakeTimeout: timeout,
-        //NPNProtocols: self.NPNProtocols,
-        //SNICallback: options.SNICallback || SNICallback
-      };
-      /*
-      clientSocket.push(data);
-      var clientTlsSocket = new tls.TLSSocket(clientSocket, options);
-      clientTlsSocket.on('secure', () => console.log('secure'));
-      */
-      var originSocket = net.connect(originUrl.port, originUrl.hostname, () => {
-        clientSocket.write('HTTP/1.1 200 Connection Established\r\n'+'Proxy-agent: WebRunner\r\n'+'\r\n');
-        originSocket.write(data);
-        originSocket.pipe(clientSocket);
-        clientSocket.pipe(originSocket);
-      });
-      //originSocket.on('connect', e => console.log(originSocket));
-      clientRequest.on('error', e => logError('clientRequest (connect)', e, originUrl));
-      clientSocket.on('error', e => logError('clientSocket', e, originUrl, ['ECONNRESET']));
-      originSocket.on('error', e => logError('originSocket', e, originUrl));
+      if (isDebugOrigin(originUrl.hostname)) {
+        inspectSecureTraffic(originUrl, clientRequest, clientSocket, data);
+      } else {
+        bypassDebugger(originUrl, clientRequest, clientSocket, data);
+      }
     } catch(e) {
       console.log(e);
     }
   };
 
   var initCa = function() {
-
+    var caKeyPath = path.join(options.configBasePath, 'cakey.pem');
+    var caCertPath = path.join(options.configBasePath, 'cacert.pem');
+    if (!fs.existsSync(caKeyPath) || !fs.existsSync(caCertPath)) {
+      console.log('Generating CA');
+      var pki = forge.pki;
+      var caKeys = pki.rsa.generateKeyPair(2048);
+      var caCert = pki.createCertificate();
+      buildCert(caCert, null, caKeys.publicKey, caKeys.privateKey, 'webrunner');
+      fs.writeFileSync(caKeyPath, pki.privateKeyToPem(caKeys.privateKey));
+      fs.writeFileSync(caCertPath,  pki.certificateToPem(caCert));
+    }
+    console.log('Loading CA');
+    caKey  = fs.readFileSync(caKeyPath);
+    caCert = fs.readFileSync(caCertPath);
   };
 
   initCa();
