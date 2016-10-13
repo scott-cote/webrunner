@@ -188,34 +188,6 @@ var runFullProxy = function(options) {
   }
   */
 
-  var handleConnect = function(clientRequest, clientSocket, data) {
-    try {
-      var originUrl = url.parse(`https://${clientRequest.url}`);
-      /*
-      clientSocket.push(data);
-      var options = {
-
-      };
-      var clientTlsSocket = new tls.TLSSocket(clientSocket, options);
-      */
-      if (originUrl.hostname === 'www.scottcote.com') {
-        originUrl = url.parse('https://localhost:8000');
-      }
-      var originSocket = net.connect(originUrl.port, originUrl.hostname, () => {
-        clientSocket.write('HTTP/1.1 200 Connection Established\r\n'+'Proxy-agent: WebRunner\r\n'+'\r\n');
-        originSocket.write(data);
-        originSocket.pipe(clientSocket);
-        clientSocket.pipe(originSocket);
-      });
-      originSocket.on('connect', e => console.log(originSocket));
-      clientRequest.on('error', e => logError('clientRequest (connect)', e, originUrl));
-      clientSocket.on('error', e => logError('clientSocket', e, originUrl, ['ECONNRESET']));
-      originSocket.on('error', e => logError('originSocket', e, originUrl));
-    } catch(e) {
-      console.log(e);
-    }
-  };
-
   var buildCert = function(cert, caCert, publicKey, signKey, name) {
     cert.publicKey = publicKey;
     cert.serialNumber = '01';
@@ -247,39 +219,84 @@ var runFullProxy = function(options) {
   };
 
   var loadSecureOptions = function() {
-    var caKeyPath = path.join(options.configBasePath, 'cakey.pem');
-    var caCertPath = path.join(options.configBasePath, 'cacert.pem');
-    var serverKeyPath = path.join(options.configBasePath, 'localhost-key.pem');
-    var serverCertPath = path.join(options.configBasePath, 'localhost-cert.pem');
-    if (!fs.existsSync(serverKeyPath) || !fs.existsSync(serverCertPath) ||
-        !fs.existsSync(caKeyPath) || !fs.existsSync(caCertPath)) {
-      console.log('Generating certs');
-      var pki = forge.pki;
-      var caKeys = pki.rsa.generateKeyPair(2048);
-      var serverKeys = pki.rsa.generateKeyPair(2048);
-      var caCert = pki.createCertificate();
-      var serverCert = pki.createCertificate();
+  var caKeyPath = path.join(options.configBasePath, 'cakey.pem');
+  var caCertPath = path.join(options.configBasePath, 'cacert.pem');
+  var serverKeyPath = path.join(options.configBasePath, 'localhost-key.pem');
+  var serverCertPath = path.join(options.configBasePath, 'localhost-cert.pem');
+  if (!fs.existsSync(serverKeyPath) || !fs.existsSync(serverCertPath) ||
+      !fs.existsSync(caKeyPath) || !fs.existsSync(caCertPath)) {
+    console.log('Generating certs');
+    var pki = forge.pki;
+    var caKeys = pki.rsa.generateKeyPair(2048);
+    var serverKeys = pki.rsa.generateKeyPair(2048);
+    var caCert = pki.createCertificate();
+    var serverCert = pki.createCertificate();
 
-      buildCert(caCert, null, caKeys.publicKey, caKeys.privateKey, 'webrunner');
-      buildCert(serverCert, caCert, serverKeys.publicKey, caKeys.privateKey, 'localhost');
+    buildCert(caCert, null, caKeys.publicKey, caKeys.privateKey, 'webrunner');
+    buildCert(serverCert, caCert, serverKeys.publicKey, caKeys.privateKey, 'localhost');
 
-      fs.writeFileSync(caKeyPath, pki.privateKeyToPem(caKeys.privateKey));
-      fs.writeFileSync(caCertPath,  pki.certificateToPem(caCert));
-      fs.writeFileSync(serverKeyPath, pki.privateKeyToPem(serverKeys.privateKey));
-      fs.writeFileSync(serverCertPath,  pki.certificateToPem(serverCert));
-    }
-    return { key: fs.readFileSync(serverKeyPath), cert: fs.readFileSync(serverCertPath) };
+    fs.writeFileSync(caKeyPath, pki.privateKeyToPem(caKeys.privateKey));
+    fs.writeFileSync(caCertPath,  pki.certificateToPem(caCert));
+    fs.writeFileSync(serverKeyPath, pki.privateKeyToPem(serverKeys.privateKey));
+    fs.writeFileSync(serverCertPath,  pki.certificateToPem(serverCert));
+  }
+  return { key: fs.readFileSync(serverKeyPath), cert: fs.readFileSync(serverCertPath) };
+};
+
+  var createSecureContextFor = function(hostname) {
+    var secureContextOptions = {
+      key: '',
+      cert: ''
+    };
+    return tls.createSecureContext(secureContextOptions)
   };
+
+  var handleConnect = function(clientRequest, clientSocket, data) {
+    try {
+      var originUrl = url.parse(`https://${clientRequest.url}`);
+      var options = {
+        secureContext: createSecureContextFor(clientRequest.hostname),
+        isServer: true,
+        //server: self,
+        //requestCert: self.requestCert,
+        //rejectUnauthorized: self.rejectUnauthorized,
+        //handshakeTimeout: timeout,
+        //NPNProtocols: self.NPNProtocols,
+        //SNICallback: options.SNICallback || SNICallback
+      };
+      clientSocket.push(data);
+      var clientTlsSocket = new tls.TLSSocket(clientSocket, options);
+      clientTlsSocket.on('secure', () => console.log('secure'));
+      /*
+      if (originUrl.hostname === 'www.scottcote.com') {
+        originUrl = url.parse('https://localhost:8000');
+      }
+      var originSocket = net.connect(originUrl.port, originUrl.hostname, () => {
+        clientSocket.write('HTTP/1.1 200 Connection Established\r\n'+'Proxy-agent: WebRunner\r\n'+'\r\n');
+        originSocket.write(data);
+        originSocket.pipe(clientSocket);
+        clientSocket.pipe(originSocket);
+      });
+      originSocket.on('connect', e => console.log(originSocket));
+      clientRequest.on('error', e => logError('clientRequest (connect)', e, originUrl));
+      clientSocket.on('error', e => logError('clientSocket', e, originUrl, ['ECONNRESET']));
+      originSocket.on('error', e => logError('originSocket', e, originUrl));
+      */
+    } catch(e) {
+      console.log(e);
+    }
+  };
+
+  var initCa = function() {
+
+  };
+
+  initCa();
 
   http.createServer(handleRequest).on('connect', handleConnect)
     .listen(options.port, function() {
       console.log("WebRunner listening on: http://localhost:"+options.port);
     }).on('error', e => logError('httpServer', e));
-
-  https.createServer(loadSecureOptions(), function (req, res) {
-    res.end('it works');
-    //handleRequest(req, res, "www.yahoo.com");
-  }).listen(8000, () => console.log('SSL test listening on port 8000'));
 };
 
 module.exports = runFullProxy;
