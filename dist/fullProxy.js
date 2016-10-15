@@ -6,6 +6,7 @@ var fs = require('fs');
 var path = require('path');
 var forge = require('node-forge');
 var tls = require('tls');
+var pki = forge.pki;
 
 /*
 
@@ -231,7 +232,6 @@ var runFullProxy = function(options) {
     if (!fs.existsSync(serverKeyPath) || !fs.existsSync(serverCertPath) ||
         !fs.existsSync(caKeyPath) || !fs.existsSync(caCertPath)) {
     console.log('Generating certs');
-    var pki = forge.pki;
     var caKeys = pki.rsa.generateKeyPair(2048);
     var serverKeys = pki.rsa.generateKeyPair(2048);
     var caCert = pki.createCertificate();
@@ -256,10 +256,9 @@ var runFullProxy = function(options) {
     var serverCertPath = path.join(options.configBasePath, hostFilename+'-cert.pem');
     if (!fs.existsSync(serverKeyPath) || !fs.existsSync(serverCertPath)) {
       console.log('Generating cert for '+hostname);
-      var pki = forge.pki;
       var serverKeys = pki.rsa.generateKeyPair(2048);
       var serverCert = pki.createCertificate();
-      buildCert(serverCert, caCert, serverKeys.publicKey, caKeys.privateKey, '*.'+hostname);
+      buildCert(serverCert, caCert, serverKeys.publicKey, caKey, '*.'+hostname);
       fs.writeFileSync(serverKeyPath, pki.privateKeyToPem(serverKeys.privateKey));
       fs.writeFileSync(serverCertPath,  pki.certificateToPem(serverCert));
     }
@@ -292,18 +291,17 @@ var runFullProxy = function(options) {
       //NPNProtocols: self.NPNProtocols,
       //SNICallback: options.SNICallback || SNICallback
     };
-    /*
     clientSocket.push(data);
     var clientTlsSocket = new tls.TLSSocket(clientSocket, options);
-    clientTlsSocket.on('secure', () => console.log('secure'));
-    */
-    bypassDebugger(originUrl, clientRequest, clientSocket, data);
+    //clientTlsSocket.on('secure', () => console.log('secure'));
+    //bypassDebugger(originUrl, clientRequest, clientSocket, data);
   };
 
   var bypassDebugger = function(originUrl, clientRequest, clientSocket, data) {
     var originSocket = net.connect(originUrl.port, originUrl.hostname, () => {
       clientSocket.write('HTTP/1.1 200 Connection Established\r\n'+'Proxy-agent: WebRunner\r\n'+'\r\n');
-      originSocket.write(data);
+      //originSocket.write(data);
+      clientSocket.push(data);
       originSocket.pipe(clientSocket);
       clientSocket.pipe(originSocket);
     });
@@ -332,7 +330,6 @@ var runFullProxy = function(options) {
     var caCertPath = path.join(options.configBasePath, 'cacert.pem');
     if (!fs.existsSync(caKeyPath) || !fs.existsSync(caCertPath)) {
       console.log('Generating CA');
-      var pki = forge.pki;
       var caKeys = pki.rsa.generateKeyPair(2048);
       var caCert = pki.createCertificate();
       buildCert(caCert, null, caKeys.publicKey, caKeys.privateKey, 'webrunner');
@@ -340,8 +337,8 @@ var runFullProxy = function(options) {
       fs.writeFileSync(caCertPath,  pki.certificateToPem(caCert));
     }
     console.log('Loading CA');
-    caKey  = fs.readFileSync(caKeyPath);
-    caCert = fs.readFileSync(caCertPath);
+    caKey = pki.privateKeyFromPem(fs.readFileSync(caKeyPath));
+    caCert = pki.certificateFromPem(fs.readFileSync(caCertPath));
     /*
     // convert a Forge public key to PEM-format
     var pem = pki.publicKeyToPem(publicKey);
