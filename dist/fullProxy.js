@@ -6,6 +6,9 @@ var fs = require('fs');
 var path = require('path');
 var forge = require('node-forge');
 var tls = require('tls');
+var stream = require('stream');
+var DuplexThrough = require('./duplexThrough.js');
+var DuplexWrapper = require('./DuplexWrapper.js');
 var pki = forge.pki;
 
 /*
@@ -292,9 +295,15 @@ var runFullProxy = function(options) {
       //SNICallback: options.SNICallback || SNICallback
     };
     clientSocket.push(data);
-    var clientTlsSocket = new tls.TLSSocket(clientSocket, options);
-    //clientTlsSocket.on('secure', () => console.log('secure'));
-    //bypassDebugger(originUrl, clientRequest, clientSocket, data);
+    var serverTlsSocket = new tls.TLSSocket(DuplexWrapper(clientSocket), options);
+    serverTlsSocket.on('secure', () => console.log('secure'));
+    /*
+    var proxy = new DuplexThrough();
+    proxy.inStream.pipe(clientSocket);
+    clientSocket.pipe(proxy.outStream);
+    var serverTlsSocket = new tls.TLSSocket(proxy, options);
+    serverTlsSocket.on('secure', () => console.log('secure'));
+    */
   };
 
   var bypassDebugger = function(originUrl, clientRequest, clientSocket, data) {
